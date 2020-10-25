@@ -2,6 +2,8 @@
 
 void deleteRows(InputArray _src, InputArray _idx, OutputArray _dst)
 {
+	//delete some rows of src
+	//idx denote the rows to be deleted
 	Mat src, idx, dst;
 	src = _src.getMat();
 	idx = _idx.getMat();
