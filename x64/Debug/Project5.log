@@ -1,0 +1,18 @@
+﻿  rec_building.cpp
+C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building_fun.h(8,1): warning C4005: “MAX”: 宏重定义
+C:\opencv\build\include\opencv2\core\cvdef.h(423): message : 参见“MAX”的前一个定义
+C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building_fun.h(151,27): warning C4244: “=”: 从“float”转换到“_Tp”，可能丢失数据
+          with
+          [
+              _Tp=int
+          ]
+C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building_fun.h(166,27): warning C4244: “=”: 从“float”转换到“_Tp”，可能丢失数据
+          with
+          [
+              _Tp=int
+          ]
+C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building_fun.h(194,11): warning C4244: “=”: 从“double”转换到“int”，可能丢失数据
+C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building_fun.h(195,6): warning C4244: “=”: 从“double”转换到“int”，可能丢失数据
+C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building_fun.h(279,32): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
+C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building_fun.h(279,27): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
+  Project5.vcxproj -> C:\Users\Kaiyu Zhang\source\repos\Project5\x64\Debug\Project5.exe
