@@ -37,18 +37,15 @@ void deleteRows(InputArray _src, InputArray _idx, OutputArray _dst)
 int main(int argc, char* argv[])
 {
 	const char* src_name = "bwlabel_test.png";
-	cv::Mat src, dst;
-
-	cv::Mat loc_x, loc_y;
-	int x = 1;
-	int y = 1;
-	loc_x = (cv::Mat_<int>(9, 1) << x - 1, x - 1, x - 3, x, x, x, x + 1, x + 1, x + 1);
-	loc_y = (cv::Mat_<int>(9, 1) << y - 1, y, y + 1, y - 1, y, y + 1, y - 1, y, y + 1);
-
+	Mat src, dst;
+	Mat visited;
+	Mat locs_x, locs_y;
 	Mat idx;
 	Mat out_of_bounds;
+	Mat stack, loc;
+	int i, j;
+	int ID_counter = 1;
 	
-
 	//cv::sort(idx, idx, SORT_ASCENDING);
 	/****************read source image and convert to float image************************/
 	src = imread(src_name);
@@ -57,30 +54,75 @@ int main(int argc, char* argv[])
 		fprintf(stderr, "Cannot load image %s\n", src_name);
 		return -1;
 	}
+	src = src / 255;
+	visited = Mat::zeros(src.size(), CV_8U);
+	dst = Mat::zeros(src.size(), CV_32S);
 
-	out_of_bounds = loc_x < 1;
-	cv::bitwise_or(out_of_bounds, loc_x > src.rows, out_of_bounds);
-	cv::bitwise_or(out_of_bounds, loc_y < 1, out_of_bounds);
-	cv::bitwise_or(out_of_bounds, loc_y > src.cols, out_of_bounds);
-	//idx.create(loc_x.rows, loc_x.cols, CV_32SC1);
-	cv::findNonZero(out_of_bounds, idx);
-	cout << loc_x << endl;
-	cout << loc_y << endl;
-	cout << idx << endl << endl;
-	deleteRows(loc_x, idx, loc_x);
-	deleteRows(loc_y, idx, loc_y);
-	cout << loc_x << endl;
-	cout << loc_y << endl;
+	for (int row = 0; row < 1; row++)
+	{
+		for (int col = 0; col < 1; col++)
+		{
+			cout << visited.at<uchar>(row, col) << endl;
+			if (src.at<uchar>(row, col) == 0)
+			{
+				visited.at<uchar>(row, col) = 1;
+			}
+			else if(visited.at<uchar>(row, col))
+			{
+				continue;
+			}
+			else
+			{
+				stack = (cv::Mat_<int>(1, 2) << row, col);
+				cout << !stack.empty() << endl << endl;
+				while (!stack.empty())
+				{
+					loc = stack.row(stack.rows - 1).clone();
+					stack.pop_back();
 
-	//int a=1; //需要删除的行  注意：需要删除的行要在message的范围内
-	//for(int i=0;i<message.rows;i++)
-	//{
-	//	if(i!=a) //第i行不是需要删除的
-	//	{
-	//		dst.push_back(message.row(i)); //把message的第i行加到dst矩阵的后面
-	//	}
-	//}
-	//message=dst.clone();
+					i = loc.at<int>(0, 0);
+					j = loc.at<int>(0, 1);
+					if (visited.at<uchar>(i, j))
+					{
+						continue;
+					}
+
+					visited.at<uchar>(i, j) = 1;
+					dst.at<int>(i, j) = ID_counter;
+
+					locs_x = (cv::Mat_<int>(8, 1) << i - 1, i, i + 1, i - 1, i + 1, i - 1, i, i + 1);
+					locs_y = (cv::Mat_<int>(8, 1) << j - 1, j - 1, j - 1, j, j, j + 1, j + 1, j + 1);
+					
+					out_of_bounds = locs_x < 0;
+					cv::bitwise_or(out_of_bounds, locs_x >= src.rows, out_of_bounds);
+					cv::bitwise_or(out_of_bounds, locs_y < 0, out_of_bounds);
+					cv::bitwise_or(out_of_bounds, locs_y >= src.cols, out_of_bounds);
+					cv::findNonZero(out_of_bounds, idx);
+
+					cout << locs_x << endl;
+					cout << locs_y << endl << endl;
+					deleteRows(locs_x, idx, locs_x);
+					deleteRows(locs_y, idx, locs_y);
+					cout << locs_x << endl;
+					cout << locs_y << endl;
+
+				}
+			}
+		}
+	}
+
+	//loc_x = (cv::Mat_<int>(9, 1) << x - 1, x - 1, x - 3, x, x, x, x + 1, x + 1, x + 1);
+	//loc_y = (cv::Mat_<int>(9, 1) << y - 1, y, y + 1, y - 1, y, y + 1, y - 1, y, y + 1);
+	
+	////idx.create(loc_x.rows, loc_x.cols, CV_32SC1);
+	//cv::findNonZero(out_of_bounds, idx);
+	//cout << loc_x << endl;
+	//cout << loc_y << endl;
+	//cout << idx << endl << endl;
+	//deleteRows(loc_x, idx, loc_x);
+	//deleteRows(loc_y, idx, loc_y);
+	//cout << loc_x << endl;
+	//cout << !src.empty() << endl;
 
 
 
