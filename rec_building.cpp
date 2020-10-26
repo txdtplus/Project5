@@ -1,130 +1,78 @@
 #include <rec_building_fun.h>
 
-void deleteRows(InputArray _src, InputArray _idx, OutputArray _dst)
-{
-	//delete some rows of src
-	//idx denote the rows to be deleted
-	Mat src, idx, dst;
-	src = _src.getMat();
-	idx = _idx.getMat();
-	_dst.create(src.rows - idx.rows, src.cols, src.type());
-	dst = _dst.getMat();
+typedef struct Region
+{                            
+	int Area;
+	Mat PixelList;
+};
 
-	int dst_i = 0;
-	int idx_i = 0;
-	for (int i = 0; i < src.rows; i++)
+Region* regionprops(InputArray _L, int seg_num)
+{
+	Region* region = new Region[seg_num];
+	Mat L;
+	Mat loc;
+	Mat emptyMat;
+	int value;
+	L = _L.getMat();
+	loc.create(1, 2, CV_32S);
+
+	for (int n = 0; n < seg_num; n++)
 	{
-		if (idx_i < idx.rows)
+		region[n].Area = 0;
+		//region[n].PixelList = emptyMat;
+	}
+
+	for (int row = 0; row < L.rows; row++)
+	{
+		for (int col = 0; col < L.cols; col++)
 		{
-			if (i != idx.at<Point>(idx_i, 0).y)
+			value = L.at<int>(row, col) - 1;
+
+			if (value >= 0)
 			{
-				src.row(i).copyTo(dst.row(dst_i));
-				dst_i++;
-			}
-			else
-			{
-				idx_i++;
-			}
-		}
-		else
-		{
-			src.row(i).copyTo(dst.row(dst_i));
-			dst_i++;
+				region[value].Area++;
+				loc.at<int>(0, 0) = row;
+				loc.at<int>(0, 1) = col;
+				//cout << loc << endl;		
+				region[value].PixelList.push_back(loc);
+			}			
 		}
 	}
+	return region;
 }
+
 
 int main(int argc, char* argv[])
 {
 	const char* src_name = "bwlabel_test.png";
 	Mat src, dst;
-	Mat visited;
-	Mat locs_x, locs_y;
-	Mat idx;
-	Mat out_of_bounds;
-	Mat stack, loc;
-	int i, j;
-	int ID_counter = 1;
+	int seg_num;
 	
-	//cv::sort(idx, idx, SORT_ASCENDING);
-	/****************read source image and convert to float image************************/
-	src = imread(src_name);
+	/****************read source image************************/
+	src = imread(src_name, IMREAD_UNCHANGED);
 	if (src.empty()) 
 	{
 		fprintf(stderr, "Cannot load image %s\n", src_name);
 		return -1;
 	}
-	src = src / 255;
-	visited = Mat::zeros(src.size(), CV_8U);
-	dst = Mat::zeros(src.size(), CV_32S);
 
-	for (int row = 0; row < 1; row++)
-	{
-		for (int col = 0; col < 1; col++)
-		{
-			cout << visited.at<uchar>(row, col) << endl;
-			if (src.at<uchar>(row, col) == 0)
-			{
-				visited.at<uchar>(row, col) = 1;
-			}
-			else if(visited.at<uchar>(row, col))
-			{
-				continue;
-			}
-			else
-			{
-				stack = (cv::Mat_<int>(1, 2) << row, col);
-				cout << !stack.empty() << endl << endl;
-				while (!stack.empty())
-				{
-					loc = stack.row(stack.rows - 1).clone();
-					stack.pop_back();
+	bwlabel(src, dst, &seg_num, 255);
+	Region* stats = regionprops(dst, seg_num);
 
-					i = loc.at<int>(0, 0);
-					j = loc.at<int>(0, 1);
-					if (visited.at<uchar>(i, j))
-					{
-						continue;
-					}
+	Mat pixellist_0, pixellist_1, pixellist_2;
+	stats[0].PixelList.copyTo(pixellist_0);
+	stats[1].PixelList.copyTo(pixellist_1);
+	stats[2].PixelList.copyTo(pixellist_2);
 
-					visited.at<uchar>(i, j) = 1;
-					dst.at<int>(i, j) = ID_counter;
-
-					locs_x = (cv::Mat_<int>(8, 1) << i - 1, i, i + 1, i - 1, i + 1, i - 1, i, i + 1);
-					locs_y = (cv::Mat_<int>(8, 1) << j - 1, j - 1, j - 1, j, j, j + 1, j + 1, j + 1);
-					
-					out_of_bounds = locs_x < 0;
-					cv::bitwise_or(out_of_bounds, locs_x >= src.rows, out_of_bounds);
-					cv::bitwise_or(out_of_bounds, locs_y < 0, out_of_bounds);
-					cv::bitwise_or(out_of_bounds, locs_y >= src.cols, out_of_bounds);
-					cv::findNonZero(out_of_bounds, idx);
-
-					cout << locs_x << endl;
-					cout << locs_y << endl << endl;
-					deleteRows(locs_x, idx, locs_x);
-					deleteRows(locs_y, idx, locs_y);
-					cout << locs_x << endl;
-					cout << locs_y << endl;
-
-				}
-			}
-		}
-	}
-
-	//loc_x = (cv::Mat_<int>(9, 1) << x - 1, x - 1, x - 3, x, x, x, x + 1, x + 1, x + 1);
-	//loc_y = (cv::Mat_<int>(9, 1) << y - 1, y, y + 1, y - 1, y, y + 1, y - 1, y, y + 1);
-	
-	////idx.create(loc_x.rows, loc_x.cols, CV_32SC1);
-	//cv::findNonZero(out_of_bounds, idx);
-	//cout << loc_x << endl;
-	//cout << loc_y << endl;
-	//cout << idx << endl << endl;
-	//deleteRows(loc_x, idx, loc_x);
-	//deleteRows(loc_y, idx, loc_y);
-	//cout << loc_x << endl;
-	//cout << !src.empty() << endl;
-
-
+	pixellist_0 = pixellist_0 + 1;
+	pixellist_1 = pixellist_1 + 1;
+	pixellist_2 = pixellist_2 + 1;
+	cout << stats[0].Area << endl;
+	cout << stats[0].PixelList << endl;
+	/*dst = dst * int(255.0 / seg_num);
+	dst.convertTo(dst, CV_8U);
+	imshow("output", dst);
+	waitKey(0);*/
 
 	return 0;
 }

@@ -18,7 +18,172 @@ Mat MakeLineStrel(float len, float theta_d);
 Mat imreconstruct(Mat marker, Mat mask);
 Mat cal_MBI(Mat src, double smin, double smax, double ds, int D);
 Mat genColorResult(Mat src, Mat mask);
+void bwlabel(InputArray _src, OutputArray _dst, int* seg_num, int max_value);
+void deleteRows(InputArray _src, InputArray _idx, OutputArray _dst);
+void MatPixel2Vec(InputArray _src, InputArray _locs_x, InputArray _locs_y, OutputArray _is_one);
 
+void deleteRows(InputArray _src, InputArray _idx, OutputArray _dst)
+{
+	//delete some rows of src
+	//idx denote the rows to be deleted
+	Mat src, idx, dst;
+	src = _src.getMat();
+	idx = _idx.getMat();
+	_dst.create(src.rows - idx.rows, src.cols, src.type());
+	dst = _dst.getMat();
+
+	int dst_i = 0;
+	int idx_i = 0;
+	for (int i = 0; i < src.rows; i++)
+	{
+		if (idx_i < idx.rows)
+		{
+			if (i != idx.at<Point>(idx_i, 0).y)
+			{
+				src.row(i).copyTo(dst.row(dst_i));
+				dst_i++;
+			}
+			else
+			{
+				idx_i++;
+			}
+		}
+		else
+		{
+			src.row(i).copyTo(dst.row(dst_i));
+			dst_i++;
+		}
+	}
+}
+
+
+void MatPixel2Vec(InputArray _src, InputArray _locs_x, InputArray _locs_y, OutputArray _is_one)
+{
+	// Input: image, x, y locations.
+	// x and y must be column vector.
+	//
+	// Output: the column vector of these pixels.
+	Mat src, locs_x, locs_y;
+	Mat is_one;
+	src = _src.getMat();
+	locs_x = _locs_x.getMat();
+	locs_y = _locs_y.getMat();
+
+	_is_one.create(locs_x.rows, 1, CV_8U);
+	is_one = _is_one.getMat();
+
+	int x, y;
+	for (int i = 0; i < locs_x.rows; i++)
+	{
+		x = locs_x.at<int>(i, 0);
+		y = locs_y.at<int>(i, 0);
+		is_one.at<uchar>(i, 0) = src.at<uchar>(x, y);
+	}
+}
+
+void bwlabel(InputArray _src, OutputArray _dst, int* seg_num, int max_value)
+{
+	// bwlabel function in MATLAB.
+	// the input image must be 0 or max_value binary image .
+	// the output Mat is labeled as 1, 2, 3, ...
+	// the seg_num denotes the number of segmentations.
+	Mat src, dst, zeros_mat;
+	Mat visited;
+	Mat locs_x, locs_y, locs;
+	Mat idx;
+	Mat out_of_bounds, is_visited, is_1;
+	Mat stack, loc;
+	int i, j;
+	int ID_counter = 1;
+	int idxx = 0;
+
+	src = _src.getMat() / max_value;
+	visited = Mat::zeros(src.size(), CV_8U);
+	_dst.create(src.size(), CV_32S);
+	dst = _dst.getMat();
+	zeros_mat = Mat::zeros(src.size(), CV_32S);
+	zeros_mat.copyTo(dst);
+
+	// For each location in your matrix...
+	for (int row = 0; row < src.rows; row++)
+	{
+		for (int col = 0; col < src.cols; col++)
+		{
+			// If this location is not 1, mark as visited and continue
+			if (src.at<uchar>(row, col) == 0)
+			{
+				visited.at<uchar>(row, col) = 1;
+			}
+			// If we have visited, then continue
+			else if (visited.at<uchar>(row, col))
+			{
+				continue;
+			}
+			// Else
+			else
+			{
+				// Initialize your stack with this location
+				stack = (cv::Mat_<int>(1, 2) << row, col);
+
+				// While your stack isn't empty...
+				while (!stack.empty())
+				{
+					loc = stack.row(stack.rows - 1).clone();
+
+					// Pop off the stack
+					stack.pop_back();
+
+					i = loc.at<int>(0, 0);
+					j = loc.at<int>(0, 1);
+
+					// If we have visited this location, continue
+					if (visited.at<uchar>(i, j))
+					{
+						continue;
+					}
+
+					// Mark location as true and mark this location to be its unique ID
+					visited.at<uchar>(i, j) = 1;
+					dst.at<int>(i, j) = ID_counter;
+
+					//Look at the 8 neighbouring locations
+					locs_x = (cv::Mat_<int>(9, 1) << i + 1, i, i - 1, i + 1, i, i - 1, i + 1, i, i - 1);
+					locs_y = (cv::Mat_<int>(9, 1) << j + 1, j + 1, j + 1, j, j, j, j - 1, j - 1, j - 1);
+
+					// Get rid of those locations out of bounds
+					out_of_bounds = locs_x < 0;
+					cv::bitwise_or(out_of_bounds, locs_x >= src.rows, out_of_bounds);
+					cv::bitwise_or(out_of_bounds, locs_y < 0, out_of_bounds);
+					cv::bitwise_or(out_of_bounds, locs_y >= src.cols, out_of_bounds);
+					cv::findNonZero(out_of_bounds, idx);
+					deleteRows(locs_x, idx, locs_x);
+					deleteRows(locs_y, idx, locs_y);
+
+					// Get rid of those locations already visited
+					MatPixel2Vec(visited, locs_x, locs_y, is_visited);
+					cv::findNonZero(is_visited, idx);
+					deleteRows(locs_x, idx, locs_x);
+					deleteRows(locs_y, idx, locs_y);
+
+					// Get rid of those locations that are zero.
+					MatPixel2Vec(src, locs_x, locs_y, is_1);
+					cv::findNonZero(1 - is_1, idx);
+					deleteRows(locs_x, idx, locs_x);
+					deleteRows(locs_y, idx, locs_y);
+
+					// Add remaining locations to the stack
+					hconcat(locs_x, locs_y, locs);
+					vconcat(locs, stack, stack);
+				}
+
+				// Increment counter once complete region has been examined
+				ID_counter++;
+			}
+		}
+	}
+
+	*seg_num = ID_counter - 1;
+}
 
 Mat genColorResult(Mat src, Mat mask)
 {
