@@ -2,8 +2,11 @@
 
 typedef struct Region
 {                            
-	int Area;
+	int Area = 0;
 	Mat PixelList;
+	Mat Centroid;
+	double MajorAxisLength;
+	double MinorAxisLength;
 };
 
 Region* regionprops(InputArray _L, int seg_num)
@@ -11,17 +14,11 @@ Region* regionprops(InputArray _L, int seg_num)
 	Region* region = new Region[seg_num];
 	Mat L;
 	Mat loc;
-	Mat emptyMat;
 	int value;
+	
+	// Area and PixelList
 	L = _L.getMat();
-	loc.create(1, 2, CV_32S);
-
-	for (int n = 0; n < seg_num; n++)
-	{
-		region[n].Area = 0;
-		//region[n].PixelList = emptyMat;
-	}
-
+	loc.create(1, 2, CV_64F);
 	for (int row = 0; row < L.rows; row++)
 	{
 		for (int col = 0; col < L.cols; col++)
@@ -31,13 +28,51 @@ Region* regionprops(InputArray _L, int seg_num)
 			if (value >= 0)
 			{
 				region[value].Area++;
-				loc.at<int>(0, 0) = row;
-				loc.at<int>(0, 1) = col;
-				//cout << loc << endl;		
+				loc.at<double>(0, 0) = col + 0.0;
+				loc.at<double>(0, 1) = row + 0.0;
+
 				region[value].PixelList.push_back(loc);
 			}			
 		}
 	}
+
+	// Centroid
+	for (int i = 0; i < seg_num; i++)
+	{
+		region[i].Centroid.create(1, 2, CV_64F);
+		reduce(region[i].PixelList, region[i].Centroid, 0, CV_REDUCE_AVG);
+	}
+
+	// MajorAxisLength, MinorAxisLength
+	Mat list;
+	Mat x, y;
+	Mat temp;
+
+	double xbar, ybar;
+	double uxx, uyy, uxy;
+	double common;
+	double Two_sqrt_2 = 2.0 * sqrt(2.0);
+
+	for (int i = 0; i < seg_num; i++)
+	{
+		list = region[i].PixelList;
+		xbar = region[i].Centroid.at<double>(0, 0);
+		ybar = region[i].Centroid.at<double>(0, 1);
+
+		x = list.col(0) - xbar;
+		y = list.col(1) - ybar;
+
+		uxx = cv::sum(x.mul(x))[0] / (x.rows) + 1.0 / 12.0;
+		uyy = cv::sum(y.mul(y))[0] / (x.rows) + 1.0 / 12.0;
+		uxy = cv::sum(x.mul(y))[0] / (x.rows);		
+
+		//cout << region[i].Centroid << "  " << ybar << "  " << uxy << endl;
+
+		common = sqrt(pow((uxx - uyy), 2) + 4.0 * pow(uxy, 2));
+		region[i].MajorAxisLength = Two_sqrt_2 * sqrt(uxx + uyy + common);
+		region[i].MinorAxisLength = Two_sqrt_2 * sqrt(uxx + uyy - common);
+	}
+
 	return region;
 }
 
@@ -45,7 +80,8 @@ Region* regionprops(InputArray _L, int seg_num)
 int main(int argc, char* argv[])
 {
 	const char* src_name = "bwlabel_test.png";
-	Mat src, dst;
+	Mat src, L;
+	Region* stats;
 	int seg_num;
 	
 	/****************read source image************************/
@@ -56,23 +92,14 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
-	bwlabel(src, dst, &seg_num, 255);
-	Region* stats = regionprops(dst, seg_num);
 
-	Mat pixellist_0, pixellist_1, pixellist_2;
-	stats[0].PixelList.copyTo(pixellist_0);
-	stats[1].PixelList.copyTo(pixellist_1);
-	stats[2].PixelList.copyTo(pixellist_2);
+	bwlabel(src, L, &seg_num, 255);
+	stats = regionprops(L, seg_num);
 
-	pixellist_0 = pixellist_0 + 1;
-	pixellist_1 = pixellist_1 + 1;
-	pixellist_2 = pixellist_2 + 1;
-	cout << stats[0].Area << endl;
-	cout << stats[0].PixelList << endl;
-	/*dst = dst * int(255.0 / seg_num);
-	dst.convertTo(dst, CV_8U);
-	imshow("output", dst);
-	waitKey(0);*/
+	for (int i = 0; i < 7; i++)
+	{		
+		cout << stats[i].MajorAxisLength <<"  " << stats[i].MinorAxisLength << endl;
+	}
 
 	return 0;
 }

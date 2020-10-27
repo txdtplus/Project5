@@ -15,5 +15,5 @@ C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building_fun.h(359,11): 
 C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building_fun.h(360,6): warning C4244: “=”: 从“double”转换到“int”，可能丢失数据
 C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building_fun.h(444,32): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
 C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building_fun.h(444,27): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
-C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building.cpp(7,2): warning C4091: “typedef ”: 没有声明变量时忽略“Region”的左侧
+C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building.cpp(10,2): warning C4091: “typedef ”: 没有声明变量时忽略“Region”的左侧
   Project5.vcxproj -> C:\Users\Kaiyu Zhang\source\repos\Project5\x64\Debug\Project5.exe

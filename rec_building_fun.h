@@ -105,9 +105,9 @@ void bwlabel(InputArray _src, OutputArray _dst, int* seg_num, int max_value)
 	zeros_mat.copyTo(dst);
 
 	// For each location in your matrix...
-	for (int row = 0; row < src.rows; row++)
+	for (int col = 0; col < src.cols; col++)
 	{
-		for (int col = 0; col < src.cols; col++)
+		for (int row = 0; row < src.rows; row++)
 		{
 			// If this location is not 1, mark as visited and continue
 			if (src.at<uchar>(row, col) == 0)
