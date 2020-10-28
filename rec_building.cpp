@@ -3,8 +3,8 @@
 typedef struct Region
 {                            
 	int Area = 0;
-	Mat PixelList;
-	Mat Centroid;
+	Mat PixelList;  // double CV_64F
+	Mat Centroid;   // double CV_64F
 	double MajorAxisLength;
 	double MinorAxisLength;
 };
@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
 
 	for (int i = 0; i < 7; i++)
 	{		
-		cout << stats[i].MajorAxisLength <<"  " << stats[i].MinorAxisLength << endl;
+		cout << stats[i].Centroid <<"  " << stats[i].MinorAxisLength << endl;
 	}
 
 	return 0;
