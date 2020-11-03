@@ -21,6 +21,144 @@ Mat genColorResult(Mat src, Mat mask);
 void bwlabel(InputArray _src, OutputArray _dst, int* seg_num, int max_value);
 void deleteRows(InputArray _src, InputArray _idx, OutputArray _dst);
 void MatPixel2Vec(InputArray _src, InputArray _locs_x, InputArray _locs_y, OutputArray _is_one);
+void findNonZero_my(InputArray _src, OutputArray _idx);
+
+void findNonZero_my(InputArray _src, OutputArray _idx)
+{
+	Mat src = _src.getMat();
+	CV_Assert(src.channels() == 1 && src.dims == 2);
+
+	int depth = src.depth();
+	std::vector<Point> idxvec;
+	int rows = src.rows, cols = src.cols;
+	AutoBuffer<int> buf_(cols + 1);
+	int* buf = buf_.data();
+
+	for (int i = 0; i < rows; i++)
+	{
+		int j, k = 0;
+		const uchar* ptr8 = src.ptr(i);
+		if (depth == CV_8U || depth == CV_8S)
+		{
+			for (j = 0; j < cols; j++)
+				if (ptr8[j] != 0) buf[k++] = j;
+		}
+		else if (depth == CV_16U || depth == CV_16S)
+		{
+			const ushort* ptr16 = (const ushort*)ptr8;
+			for (j = 0; j < cols; j++)
+				if (ptr16[j] != 0) buf[k++] = j;
+		}
+		else if (depth == CV_32S)
+		{
+			const int* ptr32s = (const int*)ptr8;
+			for (j = 0; j < cols; j++)
+				if (ptr32s[j] != 0) buf[k++] = j;
+		}
+		else if (depth == CV_32F)
+		{
+			const float* ptr32f = (const float*)ptr8;
+			for (j = 0; j < cols; j++)
+				if (ptr32f[j] != 0) buf[k++] = j;
+		}
+		else
+		{
+			const double* ptr64f = (const double*)ptr8;
+			for (j = 0; j < cols; j++)
+				if (ptr64f[j] != 0) buf[k++] = j;
+		}
+
+		if (k > 0)
+		{
+			size_t sz = idxvec.size();
+			idxvec.resize(sz + k);
+			for (j = 0; j < k; j++)
+				idxvec[sz + j] = Point(buf[j], i);
+		}
+	}
+
+	if (idxvec.empty() || (_idx.kind() == _InputArray::MAT && !_idx.getMatRef().isContinuous()))
+		_idx.release();
+
+	if (!idxvec.empty())
+		Mat(idxvec).copyTo(_idx);
+}
+
+typedef struct Region
+{
+	int Area = 0;
+	Mat PixelList;  // double CV_64F
+	Mat Centroid;   // double CV_64F
+	double MajorAxisLength = 0;
+	double MinorAxisLength = 0;
+};
+
+Region* regionprops(InputArray _L, int seg_num)
+{
+	Region* region = new Region[seg_num];
+	Mat L;
+	Mat loc;
+	int value;
+
+	// Area and PixelList
+	L = _L.getMat();
+	loc.create(1, 2, CV_64F);
+	for (int row = 0; row < L.rows; row++)
+	{
+		for (int col = 0; col < L.cols; col++)
+		{
+			value = L.at<int>(row, col) - 1;
+
+			if (value >= 0)
+			{
+				region[value].Area++;
+				loc.at<double>(0, 0) = col + 0.0;
+				loc.at<double>(0, 1) = row + 0.0;
+
+				region[value].PixelList.push_back(loc);
+			}
+		}
+	}
+
+	// Centroid
+	for (int i = 0; i < seg_num; i++)
+	{
+		region[i].Centroid.create(1, 2, CV_64F);
+		reduce(region[i].PixelList, region[i].Centroid, 0, CV_REDUCE_AVG);
+	}
+
+	// MajorAxisLength, MinorAxisLength
+	Mat list;
+	Mat x, y;
+	Mat temp;
+
+	double xbar, ybar;
+	double uxx, uyy, uxy;
+	double common;
+	double Two_sqrt_2 = 2.0 * sqrt(2.0);
+
+	for (int i = 0; i < seg_num; i++)
+	{
+		list = region[i].PixelList;
+		xbar = region[i].Centroid.at<double>(0, 0);
+		ybar = region[i].Centroid.at<double>(0, 1);
+
+		x = list.col(0) - xbar;
+		y = list.col(1) - ybar;
+
+		uxx = cv::sum(x.mul(x))[0] / (x.rows) + 1.0 / 12.0;
+		uyy = cv::sum(y.mul(y))[0] / (x.rows) + 1.0 / 12.0;
+		uxy = cv::sum(x.mul(y))[0] / (x.rows);
+
+		//cout << region[i].Centroid << "  " << ybar << "  " << uxy << endl;
+
+		common = sqrt(pow((uxx - uyy), 2) + 4.0 * pow(uxy, 2));
+		region[i].MajorAxisLength = Two_sqrt_2 * sqrt(uxx + uyy + common);
+		region[i].MinorAxisLength = Two_sqrt_2 * sqrt(uxx + uyy - common);
+	}
+
+	return region;
+}
 
 void deleteRows(InputArray _src, InputArray _idx, OutputArray _dst)
 {
@@ -161,13 +299,13 @@ void bwlabel(InputArray _src, OutputArray _dst, int* seg_num, int max_value)
 
 					// Get rid of those locations already visited
 					MatPixel2Vec(visited, locs_x, locs_y, is_visited);
-					cv::findNonZero(is_visited, idx);
+					findNonZero(is_visited, idx);
 					deleteRows(locs_x, idx, locs_x);
 					deleteRows(locs_y, idx, locs_y);
 
 					// Get rid of those locations that are zero.
 					MatPixel2Vec(src, locs_x, locs_y, is_1);
-					cv::findNonZero(1 - is_1, idx);
+					findNonZero(1 - is_1, idx);
 					deleteRows(locs_x, idx, locs_x);
 					deleteRows(locs_y, idx, locs_y);
 
