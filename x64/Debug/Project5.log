@@ -16,5 +16,4 @@ C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building_fun.h(446,11): 
 C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building_fun.h(447,6): warning C4244: “=”: 从“double”转换到“int”，可能丢失数据
 C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building_fun.h(531,32): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
 C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building_fun.h(531,27): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
-C:\Users\Kaiyu Zhang\source\repos\Project5\Project5\rec_building.cpp(42,10): warning C4244: “初始化”: 从“double”转换到“int”，可能丢失数据
   Project5.vcxproj -> C:\Users\Kaiyu Zhang\source\repos\Project5\x64\Debug\Project5.exe
