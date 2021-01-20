@@ -21,68 +21,7 @@ Mat genColorResult(Mat src, Mat mask);
 void bwlabel(InputArray _src, OutputArray _dst, int* seg_num, int max_value);
 void deleteRows(InputArray _src, InputArray _idx, OutputArray _dst);
 void MatPixel2Vec(InputArray _src, InputArray _locs_x, InputArray _locs_y, OutputArray _is_one);
-void findNonZero_my(InputArray _src, OutputArray _idx);
 
-void findNonZero_my(InputArray _src, OutputArray _idx)
-{
-	Mat src = _src.getMat();
-	CV_Assert(src.channels() == 1 && src.dims == 2);
-
-	int depth = src.depth();
-	std::vector<Point> idxvec;
-	int rows = src.rows, cols = src.cols;
-	AutoBuffer<int> buf_(cols + 1);
-	int* buf = buf_.data();
-
-	for (int i = 0; i < rows; i++)
-	{
-		int j, k = 0;
-		const uchar* ptr8 = src.ptr(i);
-		if (depth == CV_8U || depth == CV_8S)
-		{
-			for (j = 0; j < cols; j++)
-				if (ptr8[j] != 0) buf[k++] = j;
-		}
-		else if (depth == CV_16U || depth == CV_16S)
-		{
-			const ushort* ptr16 = (const ushort*)ptr8;
-			for (j = 0; j < cols; j++)
-				if (ptr16[j] != 0) buf[k++] = j;
-		}
-		else if (depth == CV_32S)
-		{
-			const int* ptr32s = (const int*)ptr8;
-			for (j = 0; j < cols; j++)
-				if (ptr32s[j] != 0) buf[k++] = j;
-		}
-		else if (depth == CV_32F)
-		{
-			const float* ptr32f = (const float*)ptr8;
-			for (j = 0; j < cols; j++)
-				if (ptr32f[j] != 0) buf[k++] = j;
-		}
-		else
-		{
-			const double* ptr64f = (const double*)ptr8;
-			for (j = 0; j < cols; j++)
-				if (ptr64f[j] != 0) buf[k++] = j;
-		}
-
-		if (k > 0)
-		{
-			size_t sz = idxvec.size();
-			idxvec.resize(sz + k);
-			for (j = 0; j < k; j++)
-				idxvec[sz + j] = Point(buf[j], i);
-		}
-	}
-
-	if (idxvec.empty() || (_idx.kind() == _InputArray::MAT && !_idx.getMatRef().isContinuous()))
-		_idx.release();
-
-	if (!idxvec.empty())
-		Mat(idxvec).copyTo(_idx);
-}
 
 typedef struct Region
 {
@@ -106,7 +45,7 @@ Region* regionprops(InputArray _L, int seg_num)
 	for (int row = 0; row < L.rows; row++)
 	{
 		for (int col = 0; col < L.cols; col++)
-		{
+		{		
 			value = L.at<int>(row, col) - 1;
 
 			if (value >= 0)
@@ -115,6 +54,14 @@ Region* regionprops(InputArray _L, int seg_num)
 				loc.at<double>(0, 0) = col + 0.0;
 				loc.at<double>(0, 1) = row + 0.0;
 
+				//if (region[value].PixelList.empty())
+				//{
+				//	region[value].PixelList = loc.clone();
+				//}
+				//else
+				//{
+				//	region[value].PixelList.push_back(loc);
+				//}
 				region[value].PixelList.push_back(loc);
 			}
 		}
@@ -299,13 +246,15 @@ void bwlabel(InputArray _src, OutputArray _dst, int* seg_num, int max_value)
 
 					// Get rid of those locations already visited
 					MatPixel2Vec(visited, locs_x, locs_y, is_visited);
-					findNonZero(is_visited, idx);
+					cv::findNonZero(is_visited, idx);
+					// findNonZero_my(is_visited, idx);
 					deleteRows(locs_x, idx, locs_x);
 					deleteRows(locs_y, idx, locs_y);
 
 					// Get rid of those locations that are zero.
 					MatPixel2Vec(src, locs_x, locs_y, is_1);
-					findNonZero(1 - is_1, idx);
+					cv::findNonZero(1 - is_1, idx);
+					// findNonZero_my(1 - is_1, idx);
 					deleteRows(locs_x, idx, locs_x);
 					deleteRows(locs_y, idx, locs_y);
 
